@@ -1,0 +1,597 @@
+import React, { useState, useEffect } from 'react';
+import { BookOpen, Feather, Download, Settings, Image } from 'lucide-react';
+
+// Default theme
+const defaultTheme = {
+  mainBg: '#f0f0f0',
+  accentColor: '#3a7ca5',
+  textColor: '#2d3748',
+  secondaryColor: '#718096',
+  fontFamily: "'Source Han Serif CN', serif",
+  decorElement: 'minimal-lines',
+  contentSpacing: 'normal',
+  borderRadius: '12px'
+};
+
+const XiaohongshuFormatter = () => {
+  const [markdown, setMarkdown] = useState('# 信息量管理\n\n在《单口喜剧的进阶技巧》一书中，我读到了关于信息量管理的内容。这是一种重要的喜剧技巧，其核心原则是：当事人（人物）< 观众 < 叙述者（演员）。这种信息量关系的不等式是制造喜剧效果的关键。\n\n### 信息量关系\n\n- **当事人（人物）**：知道得最少，往往对关键信息一无所知或知之甚少。\n- **观众**：知道得比人物多，但比叙述者少，处于一个中间状态。\n- **叙述者（演员）**：知道得最多，掌握着全部的信息。\n\n### 喜剧效果原理\n\n观众因为比人物知道得更多，所以在人物做出一些看似不合理或思慮的行为时，会产生一种优越感和预期感，从而引发笑声。');
+  const [theme, setTheme] = useState(defaultTheme);
+  const [activeTab, setActiveTab] = useState('preview');
+  const [copied, setCopied] = useState(false);
+
+  // Parse markdown to HTML with improved styling
+  const parseMarkdown = (md) => {
+    let html = md;
+    
+    // Headers
+    html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+    html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+    html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+    
+    // Bold
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Italic
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    
+    // Lists
+    html = html.replace(/^\s*-\s*(.*$)/gm, '<li>$1</li>');
+    
+    // Group list items and add ul tags
+    let inList = false;
+    const lines = html.split('\n');
+    html = lines.map(line => {
+      if (line.startsWith('<li>')) {
+        if (!inList) {
+          inList = true;
+          return '<ul>' + line;
+        }
+        return line;
+      } else if (inList) {
+        inList = false;
+        return '</ul>\n' + line;
+      }
+      return line;
+    }).join('\n');
+    
+    if (inList) {
+      html += '</ul>';
+    }
+    
+    // Paragraphs
+    html = html.replace(/^(?!<[uo]l|<li|<h[1-6])(.*$)/gm, (match) => {
+      if (match.trim() === '') return '';
+      return '<p>' + match + '</p>';
+    });
+    
+    return html;
+  };
+
+  // Function to copy to clipboard
+  const copyToClipboard = () => {
+    const formattedContent = document.querySelector('.xiaohongshu-preview').innerText;
+    navigator.clipboard.writeText(formattedContent).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  // Function to download as image
+  const downloadAsImage = () => {
+    alert('在实际应用中，此功能将使用html2canvas库将内容保存为图片');
+  };
+
+  // Handle theme change
+  const handleThemeChange = (property, value) => {
+    setTheme({ ...theme, [property]: value });
+  };
+
+  return (
+    <div className="flex flex-col w-full h-full bg-gray-100" style={{ minHeight: '100vh' }}>
+      <header className="bg-white shadow-sm py-4 px-6">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Feather className="text-gray-700" size={24} />
+            <h1 className="text-xl font-medium text-gray-800">小红书排版助手</h1>
+          </div>
+          <div className="flex space-x-2">
+            <button 
+              className={`px-4 py-2 rounded-md flex items-center ${activeTab === 'preview' ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-700'}`}
+              onClick={() => setActiveTab('preview')}
+            >
+              预览
+            </button>
+            <button 
+              className={`px-4 py-2 rounded-md flex items-center ${activeTab === 'settings' ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-700'}`}
+              onClick={() => setActiveTab('settings')}
+            >
+              样式设置
+            </button>
+          </div>
+        </div>
+      </header>
+      
+      <main className="flex-1 flex flex-col md:flex-row p-4 md:p-6 max-w-6xl mx-auto w-full">
+        {/* Left Panel - Markdown Input */}
+        <div className="w-full md:w-1/2 md:pr-3 mb-4 md:mb-0">
+          <div className="bg-white rounded-lg shadow-sm p-4 h-full flex flex-col">
+            <h2 className="text-lg font-medium mb-3 text-gray-700 flex items-center">
+              <BookOpen size={18} className="mr-2" />
+              Markdown 输入
+            </h2>
+            <textarea 
+              className="w-full flex-1 p-4 border rounded-lg font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 bg-gray-50"
+              value={markdown}
+              onChange={(e) => setMarkdown(e.target.value)}
+              placeholder="在这里输入Markdown格式的文本..."
+              style={{ minHeight: "400px" }}
+            />
+          </div>
+        </div>
+        
+        {/* Right Panel - Preview or Theme Settings */}
+        <div className="w-full md:w-1/2 md:pl-3">
+          {activeTab === 'preview' ? (
+            <div className="bg-white rounded-lg shadow-sm p-4 h-full flex flex-col">
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-lg font-medium text-gray-700 flex items-center">
+                  <Image size={18} className="mr-2" />
+                  小红书预览
+                </h2>
+                <div className="flex space-x-2">
+                  <button 
+                    className="px-3 py-1.5 rounded bg-gray-800 text-white text-sm flex items-center"
+                    onClick={copyToClipboard}
+                  >
+                    {copied ? '已复制!' : '复制文本'}
+                  </button>
+                  <button 
+                    className="px-3 py-1.5 rounded bg-gray-800 text-white text-sm flex items-center"
+                    onClick={downloadAsImage}
+                  >
+                    <Download size={14} className="mr-1.5" /> 保存图片
+                  </button>
+                </div>
+              </div>
+              
+              {/* Preview Container with 3:4 Aspect Ratio */}
+              <div className="flex-1 overflow-auto">
+                <div 
+                  className="xiaohongshu-preview shadow-md overflow-hidden"
+                  style={{
+                    width: '100%',
+                    maxWidth: '375px',
+                    margin: '0 auto',
+                    aspectRatio: '3/4',
+                    backgroundColor: theme.mainBg,
+                    color: theme.textColor,
+                    fontFamily: theme.fontFamily,
+                    borderRadius: theme.borderRadius,
+                    position: 'relative',
+                  }}
+                >
+                  {/* Background decoration based on theme */}
+                  {theme.decorElement === 'minimal-lines' && (
+                    <div className="absolute inset-0 z-0 pointer-events-none">
+                      <div className="absolute top-3 left-3 w-12 h-12">
+                        <div className="absolute top-0 left-0 w-full h-full border-t-2 border-l-2" 
+                          style={{ borderColor: `${theme.accentColor}` }}></div>
+                      </div>
+                      <div className="absolute top-3 right-3 w-12 h-12">
+                        <div className="absolute top-0 right-0 w-full h-full border-t-2 border-r-2" 
+                          style={{ borderColor: `${theme.accentColor}` }}></div>
+                      </div>
+                      <div className="absolute bottom-3 left-3 w-12 h-12">
+                        <div className="absolute bottom-0 left-0 w-full h-full border-b-2 border-l-2" 
+                          style={{ borderColor: `${theme.accentColor}` }}></div>
+                      </div>
+                      <div className="absolute bottom-3 right-3 w-12 h-12">
+                        <div className="absolute bottom-0 right-0 w-full h-full border-b-2 border-r-2" 
+                          style={{ borderColor: `${theme.accentColor}` }}></div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {theme.decorElement === 'abstract-wave' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-32 opacity-30 pointer-events-none" 
+                      style={{ 
+                        background: `linear-gradient(to right, ${theme.accentColor}20, ${theme.accentColor}, ${theme.accentColor}20)`,
+                        borderTopLeftRadius: '50% 70%',
+                        borderTopRightRadius: '50% 70%',
+                      }}>
+                    </div>
+                  )}
+                  
+                  {theme.decorElement === 'gradient-blur' && (
+                    <div className="absolute inset-0 pointer-events-none">
+                      <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-30" 
+                        style={{ 
+                          background: theme.accentColor,
+                          filter: 'blur(40px)',
+                          transform: 'translate(25%, -25%)'
+                        }}>
+                      </div>
+                      <div className="absolute bottom-0 left-0 w-40 h-40 rounded-full opacity-30" 
+                        style={{ 
+                          background: theme.accentColor,
+                          filter: 'blur(40px)',
+                          transform: 'translate(-25%, 25%)'
+                        }}>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {theme.decorElement === 'ink-splash' && (
+                    <div className="absolute inset-0 pointer-events-none">
+                      <div className="absolute top-4 right-4 w-32 h-32 opacity-25" 
+                        style={{ 
+                          background: theme.accentColor,
+                          borderRadius: '67% 33% 45% 55% / 38% 53% 47% 62%',
+                          transform: 'rotate(20deg)'
+                        }}>
+                      </div>
+                      <div className="absolute bottom-12 left-0 w-20 h-20 opacity-20" 
+                        style={{ 
+                          background: theme.accentColor,
+                          borderRadius: '37% 63% 45% 55% / 38% 33% 67% 62%',
+                          transform: 'rotate(-15deg)'
+                        }}>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Content container */}
+                  <div className="relative z-10 p-5 h-full overflow-y-auto" style={{
+                    padding: theme.contentSpacing === 'compact' ? '16px' : theme.contentSpacing === 'spacious' ? '28px' : '22px'
+                  }}>
+                    <div 
+                      className="xiaohongshu-content"
+                      dangerouslySetInnerHTML={{ __html: parseMarkdown(markdown) }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm p-4 h-full overflow-auto">
+              <h2 className="text-lg font-medium mb-4 text-gray-700 flex items-center">
+                <Settings size={18} className="mr-2" />
+                样式设置
+              </h2>
+              
+              <div className="space-y-6">
+                <div className="p-4 rounded-lg bg-gray-50">
+                  <h3 className="font-medium mb-3 text-gray-800 text-sm uppercase tracking-wide">颜色</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm mb-1.5 text-gray-600">背景色</label>
+                      <div className="flex items-center">
+                        <input 
+                          type="color" 
+                          value={theme.mainBg}
+                          onChange={(e) => handleThemeChange('mainBg', e.target.value)}
+                          className="w-8 h-8 rounded-md mr-2 border"
+                        />
+                        <input 
+                          type="text" 
+                          value={theme.mainBg}
+                          onChange={(e) => handleThemeChange('mainBg', e.target.value)}
+                          className="flex-1 border rounded-md px-2 py-1 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1.5 text-gray-600">强调色</label>
+                      <div className="flex items-center">
+                        <input 
+                          type="color" 
+                          value={theme.accentColor}
+                          onChange={(e) => handleThemeChange('accentColor', e.target.value)}
+                          className="w-8 h-8 rounded-md mr-2 border"
+                        />
+                        <input 
+                          type="text" 
+                          value={theme.accentColor}
+                          onChange={(e) => handleThemeChange('accentColor', e.target.value)}
+                          className="flex-1 border rounded-md px-2 py-1 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1.5 text-gray-600">文字颜色</label>
+                      <div className="flex items-center">
+                        <input 
+                          type="color" 
+                          value={theme.textColor}
+                          onChange={(e) => handleThemeChange('textColor', e.target.value)}
+                          className="w-8 h-8 rounded-md mr-2 border"
+                        />
+                        <input 
+                          type="text" 
+                          value={theme.textColor}
+                          onChange={(e) => handleThemeChange('textColor', e.target.value)}
+                          className="flex-1 border rounded-md px-2 py-1 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1.5 text-gray-600">次要颜色</label>
+                      <div className="flex items-center">
+                        <input 
+                          type="color" 
+                          value={theme.secondaryColor}
+                          onChange={(e) => handleThemeChange('secondaryColor', e.target.value)}
+                          className="w-8 h-8 rounded-md mr-2 border"
+                        />
+                        <input 
+                          type="text" 
+                          value={theme.secondaryColor}
+                          onChange={(e) => handleThemeChange('secondaryColor', e.target.value)}
+                          className="flex-1 border rounded-md px-2 py-1 text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-gray-50">
+                  <h3 className="font-medium mb-3 text-gray-800 text-sm uppercase tracking-wide">排版</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm mb-1.5 text-gray-600">字体</label>
+                      <select 
+                        value={theme.fontFamily}
+                        onChange={(e) => handleThemeChange('fontFamily', e.target.value)}
+                        className="w-full border rounded-md px-3 py-2 text-sm"
+                      >
+                        <option value="'华文楷体', 'STKaiti', serif">华文楷体</option>
+                        <option value="'Times New Roman', serif">Times New Roman</option>
+                        <option value="'Source Han Serif CN', serif">思源宋体</option>
+                        <option value="'Source Han Sans CN', sans-serif">思源黑体</option>
+                        <option value="'LXGW WenKai', serif">霞鹜文楷</option>
+                        <option value="'PingFang SC', sans-serif">苹方</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm mb-1.5 text-gray-600">装饰元素</label>
+                      <select 
+                        value={theme.decorElement}
+                        onChange={(e) => handleThemeChange('decorElement', e.target.value)}
+                        className="w-full border rounded-md px-3 py-2 text-sm"
+                      >
+                        <option value="none">无</option>
+                        <option value="minimal-lines">极简线框</option>
+                        <option value="abstract-wave">抽象波浪</option>
+                        <option value="gradient-blur">渐变光晕</option>
+                        <option value="ink-splash">墨迹效果</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm mb-1.5 text-gray-600">内容间距</label>
+                      <select 
+                        value={theme.contentSpacing}
+                        onChange={(e) => handleThemeChange('contentSpacing', e.target.value)}
+                        className="w-full border rounded-md px-3 py-2 text-sm"
+                      >
+                        <option value="compact">紧凑</option>
+                        <option value="normal">标准</option>
+                        <option value="spacious">宽松</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm mb-1.5 text-gray-600">圆角大小</label>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="24" 
+                        step="2"
+                        value={parseInt(theme.borderRadius)}
+                        onChange={(e) => handleThemeChange('borderRadius', `${e.target.value}px`)}
+                        className="w-full"
+                      />
+                      <div className="text-xs text-gray-500 text-right mt-1">{theme.borderRadius}</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-gray-50">
+                  <h3 className="font-medium mb-3 text-gray-800 text-sm uppercase tracking-wide">预设模板</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      className="border rounded-lg p-3 hover:bg-gray-50 flex flex-col items-center transition-all hover:shadow-sm"
+                      onClick={() => setTheme({
+                        ...theme,
+                        mainBg: '#F9F3DF',
+                        accentColor: '#D4A373',
+                        textColor: '#5D4037',
+                        secondaryColor: '#8D6E63',
+                        fontFamily: "'华文楷体', 'STKaiti', serif",
+                        decorElement: 'minimal-lines',
+                        contentSpacing: 'normal'
+                      })}
+                    >
+                      <div className="flex space-x-1 mb-2">
+                        <div className="w-4 h-4 rounded-full bg-[#F9F3DF]"></div>
+                        <div className="w-4 h-4 rounded-full bg-[#D4A373]"></div>
+                        <div className="w-4 h-4 rounded-full bg-[#5D4037]"></div>
+                      </div>
+                      <span className="text-sm">复古纸张</span>
+                    </button>
+                    
+                    <button 
+                      className="border rounded-lg p-3 hover:bg-gray-50 flex flex-col items-center transition-all hover:shadow-sm"
+                      onClick={() => setTheme({
+                        ...theme,
+                        mainBg: '#F5F5F5',
+                        accentColor: '#2D3748',
+                        textColor: '#1A202C',
+                        secondaryColor: '#718096',
+                        fontFamily: "'Source Han Serif CN', serif",
+                        decorElement: 'ink-splash',
+                        contentSpacing: 'spacious'
+                      })}
+                    >
+                      <div className="flex space-x-1 mb-2">
+                        <div className="w-4 h-4 rounded-full bg-[#F5F5F5]"></div>
+                        <div className="w-4 h-4 rounded-full bg-[#2D3748]"></div>
+                        <div className="w-4 h-4 rounded-full bg-[#1A202C]"></div>
+                      </div>
+                      <span className="text-sm">水墨简约</span>
+                    </button>
+                    
+                    <button 
+                      className="border rounded-lg p-3 hover:bg-gray-50 flex flex-col items-center transition-all hover:shadow-sm"
+                      onClick={() => setTheme({
+                        ...theme,
+                        mainBg: '#E6F6FF',
+                        accentColor: '#3182CE',
+                        textColor: '#2A4365',
+                        secondaryColor: '#63B3ED',
+                        fontFamily: "'Source Han Sans CN', sans-serif",
+                        decorElement: 'abstract-wave',
+                        contentSpacing: 'normal'
+                      })}
+                    >
+                      <div className="flex space-x-1 mb-2">
+                        <div className="w-4 h-4 rounded-full bg-[#E6F6FF]"></div>
+                        <div className="w-4 h-4 rounded-full bg-[#3182CE]"></div>
+                        <div className="w-4 h-4 rounded-full bg-[#2A4365]"></div>
+                      </div>
+                      <span className="text-sm">蓝色云朵</span>
+                    </button>
+                    
+                    <button 
+                      className="border rounded-lg p-3 hover:bg-gray-50 flex flex-col items-center transition-all hover:shadow-sm"
+                      onClick={() => setTheme({
+                        ...theme,
+                        mainBg: '#FFFFFF',
+                        accentColor: '#9F7AEA',
+                        textColor: '#44337A',
+                        secondaryColor: '#B794F4',
+                        fontFamily: "'PingFang SC', sans-serif",
+                        decorElement: 'gradient-blur',
+                        contentSpacing: 'spacious'
+                      })}
+                    >
+                      <div className="flex space-x-1 mb-2">
+                        <div className="w-4 h-4 rounded-full bg-white border"></div>
+                        <div className="w-4 h-4 rounded-full bg-[#9F7AEA]"></div>
+                        <div className="w-4 h-4 rounded-full bg-[#44337A]"></div>
+                      </div>
+                      <span className="text-sm">梦幻紫</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+      
+      {/* Apply custom styling based on theme */}
+      <style jsx global>{`
+        .xiaohongshu-content h1 {
+          font-size: 1.6rem;
+          font-weight: 600;
+          margin-bottom: 1.2rem;
+          color: ${theme.textColor};
+          position: relative;
+          padding-bottom: 0.5rem;
+          display: inline-block;
+        }
+        
+        .xiaohongshu-content h1:after {
+          content: "";
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 100%;
+          height: 3px;
+          background-color: ${theme.accentColor};
+          opacity: 0.7;
+        }
+        
+        .xiaohongshu-content h2 {
+          font-size: 1.35rem;
+          font-weight: 600;
+          margin-top: 1.7rem;
+          margin-bottom: 0.9rem;
+          color: ${theme.textColor};
+          position: relative;
+          padding-bottom: 0.2rem;
+        }
+        
+        .xiaohongshu-content h2:after {
+          content: "";
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 60%;
+          height: 2px;
+          background-color: ${theme.accentColor};
+          opacity: 0.6;
+        }
+        
+        .xiaohongshu-content h3 {
+          font-size: 1.15rem;
+          font-weight: 600;
+          margin-top: 1.4rem;
+          margin-bottom: 0.7rem;
+          color: ${theme.textColor};
+          position: relative;
+          padding-left: 0.7rem;
+        }
+        
+        .xiaohongshu-content h3:before {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 0.2rem;
+          bottom: 0.2rem;
+          width: 3px;
+          background-color: ${theme.accentColor};
+          border-radius: 3px;
+        }
+        
+        .xiaohongshu-content p {
+          margin-bottom: ${theme.contentSpacing === 'compact' ? '0.6rem' : theme.contentSpacing === 'spacious' ? '1.2rem' : '0.8rem'};
+          line-height: ${theme.contentSpacing === 'compact' ? '1.5' : theme.contentSpacing === 'spacious' ? '1.8' : '1.6'};
+          letter-spacing: 0.01em;
+        }
+        
+        .xiaohongshu-content strong {
+          color: ${theme.accentColor};
+          font-weight: 600;
+        }
+        
+        .xiaohongshu-content ul {
+          margin-bottom: ${theme.contentSpacing === 'compact' ? '0.8rem' : theme.contentSpacing === 'spacious' ? '1.4rem' : '1rem'};
+          padding-left: 0.5rem;
+        }
+        
+        .xiaohongshu-content li {
+          margin-bottom: ${theme.contentSpacing === 'compact' ? '0.3rem' : theme.contentSpacing === 'spacious' ? '0.7rem' : '0.5rem'};
+          position: relative;
+          padding-left: 1.2rem;
+          line-height: ${theme.contentSpacing === 'compact' ? '1.5' : theme.contentSpacing === 'spacious' ? '1.8' : '1.6'};
+        }
+        
+        .xiaohongshu-content li:before {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 0.6rem;
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background-color: ${theme.accentColor};
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default XiaohongshuFormatter;
